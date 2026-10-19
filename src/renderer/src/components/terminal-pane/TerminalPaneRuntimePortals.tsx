@@ -171,9 +171,10 @@ export function TerminalPaneRecoveryPortals({
   const { managedPanes, paneTransportsRef, ptyRecoveryStatesByPaneId, showSshReconnectOverlay } =
     controller
   const wslHostUnavailable = useWslHostUnavailableReason(controller.worktreeId)
-  const wakingMachineName = useAppStore(
-    (state) => state.wakingMachineByWorktreeId[controller.worktreeId] ?? null
-  )
+  const wakingMachineName = useAppStore((state) => {
+    const wake = state.machineWakeByWorktreeId[controller.worktreeId]
+    return wake && !wake.failure ? wake.machineName : null
+  })
   if (showSshReconnectOverlay) {
     return null
   }
