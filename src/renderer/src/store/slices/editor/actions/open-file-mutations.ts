@@ -21,6 +21,7 @@ export function createOpenFileMutations(
   | 'clearPendingDiskBaselineVerification'
   | 'setPendingDiskBaselineVerification'
   | 'setPendingLiveDiskVerification'
+  | 'setPendingWatchReady'
   | 'clearSelfMoveEcho'
   | 'clearUntitled'
 > {
@@ -180,6 +181,20 @@ export function createOpenFileMutations(
         return {
           openFiles: s.openFiles.map((f) =>
             f.id === fileId ? { ...f, pendingLiveDiskVerification: next } : f
+          )
+        }
+      }),
+
+    setPendingWatchReady: (fileIds, value) =>
+      set((s) => {
+        const ids = new Set(fileIds)
+        const next = value || undefined
+        if (!s.openFiles.some((f) => ids.has(f.id) && f.pendingWatchReady !== next)) {
+          return s
+        }
+        return {
+          openFiles: s.openFiles.map((f) =>
+            ids.has(f.id) && f.pendingWatchReady !== next ? { ...f, pendingWatchReady: next } : f
           )
         }
       }),

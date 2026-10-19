@@ -4,6 +4,8 @@ import type { SearchOptions, SearchResult } from '../../shared/code-search-types
 import type {
   DirEntry,
   FsChangedPayload,
+  WatchLivePayload,
+  WatchWorktreeStatus,
   MarkdownDocument
 } from '../../shared/filesystem-entry-types'
 import type {
@@ -215,9 +217,14 @@ export type FilesystemApi = {
     uploadPathsToAgentSessionAttachments: (
       args: AgentSessionAttachmentUploadTarget & { paths: string[] }
     ) => Promise<AgentSessionAttachmentPathUploadResult>
-    watchWorktree: (args: { worktreePath: string; connectionId?: string }) => Promise<void>
+    /** Older hosts resolve with no status; treat that as live. */
+    watchWorktree: (args: {
+      worktreePath: string
+      connectionId?: string
+    }) => Promise<WatchWorktreeStatus | void>
     unwatchWorktree: (args: { worktreePath: string; connectionId?: string }) => Promise<void>
     onFsChanged: (callback: (payload: FsChangedPayload) => void) => () => void
+    onWatchLive: (callback: (payload: WatchLivePayload) => void) => () => void
   }
   notebook: {
     listPythonEnvironments: (args: {

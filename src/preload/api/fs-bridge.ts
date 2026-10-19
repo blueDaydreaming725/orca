@@ -16,7 +16,11 @@ import type {
   AgentSessionAttachmentUploadTarget
 } from '../../shared/agent-session-attachments'
 import type { SearchResult } from '../../shared/code-search-types'
-import type { FsChangedPayload } from '../../shared/filesystem-entry-types'
+import type {
+  FsChangedPayload,
+  WatchLivePayload,
+  WatchWorktreeStatus
+} from '../../shared/filesystem-entry-types'
 import type {
   ImportItemResult,
   ResolveDroppedPathsResult,
@@ -225,8 +229,10 @@ export const fsApi = {
     args: AgentSessionAttachmentUploadTarget & { paths: string[] }
   ): Promise<AgentSessionAttachmentPathUploadResult> =>
     ipcRenderer.invoke('fs:uploadPathsToAgentSessionAttachments', args),
-  watchWorktree: (args: { worktreePath: string; connectionId?: string }): Promise<void> =>
-    ipcRenderer.invoke('fs:watchWorktree', args),
+  watchWorktree: (args: {
+    worktreePath: string
+    connectionId?: string
+  }): Promise<WatchWorktreeStatus | void> => ipcRenderer.invoke('fs:watchWorktree', args),
   unwatchWorktree: (args: { worktreePath: string; connectionId?: string }): Promise<void> =>
     ipcRenderer.invoke('fs:unwatchWorktree', args),
   onFsChanged: (callback: (payload: FsChangedPayload) => void): (() => void) => {
@@ -234,5 +240,11 @@ export const fsApi = {
       callback(payload)
     ipcRenderer.on('fs:changed', listener)
     return () => ipcRenderer.removeListener('fs:changed', listener)
+  },
+  onWatchLive: (callback: (payload: WatchLivePayload) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, payload: WatchLivePayload) =>
+      callback(payload)
+    ipcRenderer.on('fs:watchLive', listener)
+    return () => ipcRenderer.removeListener('fs:watchLive', listener)
   }
 } satisfies PreloadApi['fs']

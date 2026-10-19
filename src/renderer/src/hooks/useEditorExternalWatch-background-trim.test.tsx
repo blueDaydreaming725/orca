@@ -29,7 +29,11 @@ const harness = vi.hoisted(() => {
 
 vi.mock('@/store', () => ({
   useAppStore: Object.assign((selector: (state: unknown) => unknown) => selector({}), {
-    getState: () => ({ openFiles: [], setPendingDiskBaselineVerification: vi.fn() })
+    getState: () => ({
+      openFiles: [],
+      setPendingDiskBaselineVerification: vi.fn(),
+      setPendingWatchReady: vi.fn()
+    })
   })
 }))
 vi.mock('./editor-external-watch-targets', () => ({
@@ -126,7 +130,12 @@ describe('useEditorExternalWatch with background trim', () => {
     unwatchWorktree = vi.fn().mockResolvedValue(undefined)
     previousApi = (window as unknown as { api?: unknown }).api
     ;(window as unknown as { api: unknown }).api = {
-      fs: { watchWorktree, unwatchWorktree, onFsChanged: vi.fn(() => vi.fn()) }
+      fs: {
+        watchWorktree,
+        unwatchWorktree,
+        onFsChanged: vi.fn(() => vi.fn()),
+        onWatchLive: vi.fn(() => vi.fn())
+      }
     }
     container = document.body.appendChild(document.createElement('div'))
     root = createRoot(container)

@@ -10,15 +10,17 @@ import { requestRemoteWatcherResync } from './filesystem-watcher-remote-resync'
 import { scheduleRemoteWatcherRetryCore } from './filesystem-watcher-remote-retry'
 import { scheduleDormantRemoteWatcherRearmCore } from './filesystem-watcher-remote-dormant'
 import { reinstallRemoteWatchersForConnectionCore } from './filesystem-watcher-remote-provider-rearm'
+import { announceWatchLive } from './filesystem-watcher-live-announce'
 
-export function installRemoteWatcher(
+// Why: every attach path (initial, retry, dormant/provider re-arm, removal recovery) funnels here, so a success is the renderer's live signal.
+export async function installRemoteWatcher(
   sender: WebContents,
   connectionId: string,
   worktreePath: string,
   generation = watcherLifecycleState.remoteWatcherLifecycleGeneration,
   senderSignal = registerWatcherSenderCleanup(sender)
-) {
-  return installRemoteWatcherCore(
+): ReturnType<typeof installRemoteWatcherCore> {
+  const result = await installRemoteWatcherCore(
     sender,
     connectionId,
     worktreePath,
@@ -26,6 +28,10 @@ export function installRemoteWatcher(
     generation,
     senderSignal
   )
+  if (result === 'installed') {
+    announceWatchLive(sender, { worktreePath, connectionId })
+  }
+  return result
 }
 
 export function scheduleRemoteWatcherRetry(

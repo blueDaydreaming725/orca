@@ -22,6 +22,7 @@ import { cancelLocalBatchFlush } from './filesystem-watcher-batch-control'
 import { scheduleLocalCapacityRetry } from './filesystem-watcher-local-capacity'
 import { installLocalWatcher } from './filesystem-watcher-local-install'
 import { isCurrentWatcherSender } from './filesystem-watcher-sender-lifetime'
+import { announceWatchLive, isLocalWatchLiveFor } from './filesystem-watcher-live-announce'
 
 // ── Subscribe / Unsubscribe ──────────────────────────────────────────
 
@@ -45,6 +46,10 @@ export async function subscribeLocalWatcher(
     await subscribeWhileRemovalAllowed(worktreePath, sender, generation, senderSignal)
   } finally {
     finishInstall()
+  }
+  // Why: every attach path (initial, capacity retry, removal recovery) funnels here, so a live listener is the renderer's live signal.
+  if (isLocalWatchLiveFor(worktreePath, sender.id)) {
+    announceWatchLive(sender, { worktreePath })
   }
 }
 

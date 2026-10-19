@@ -109,7 +109,8 @@ describe('useEditorExternalWatch subscriptions', () => {
       fs: {
         watchWorktree,
         unwatchWorktree,
-        onFsChanged: vi.fn(() => unsubscribeFsEvents)
+        onFsChanged: vi.fn(() => unsubscribeFsEvents),
+        onWatchLive: vi.fn(() => vi.fn())
       }
     }
     container = document.body.appendChild(document.createElement('div'))

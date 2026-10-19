@@ -3,10 +3,8 @@ import { useAppStore } from '@/store'
 import { subscribeEditorRuntimeFileWatch } from './editor-runtime-file-watch'
 import { normalizeRuntimePathForComparison } from '../../../shared/cross-platform-path'
 import type { FsChangedPayload } from '../../../shared/filesystem-entry-types'
-import { canAutoSaveOpenFile } from '@/components/editor/editor-autosave'
 import {
   getEditorExternalWatchTargetKey,
-  getOpenFileRuntimeOwner,
   selectEditorExternalWatchTargets,
   type EditorExternalWatchTarget
 } from './editor-external-watch-targets'
@@ -14,37 +12,19 @@ import { buildEditorExternalWatchEventHandler } from './editor-external-watch-ev
 import { verifyLatchedEditorMoveDestinations } from './editor-external-watch-disk-verification'
 import {
   acquireWatchRoot,
+  isWatchRootLive,
+  markWatchRootLive,
   releaseAllWatchRoots,
   releaseWatchRoot,
   type HeldWatchRoots
 } from './editor-external-watch-local-roots'
+import { holdRewatchedTabs, releaseRewatchedTabs } from './editor-external-watch-rewatch-hold'
 
 type FsChangedHandler = (
   payload: FsChangedPayload,
   runtimeEnvironmentId?: string | null,
   onlyTarget?: EditorExternalWatchTarget
 ) => void
-
-/**
- * Tabs of a re-watched workspace may show content that changed while unwatched, until the resync
- * lands. Hand them to the restored-tab conflict scan: it ignores clean tabs, so this only bites
- * once the user edits one, and then autosave waits for a disk-vs-baseline check (banner on mismatch).
- */
-function armRewatchedTabDiskChecks(target: EditorExternalWatchTarget): void {
-  const state = useAppStore.getState()
-  for (const file of state.openFiles) {
-    // Why: mirror the scan's eligibility, or a tab it skips would keep autosave suspended forever.
-    if (
-      file.worktreeId === target.worktreeId &&
-      getOpenFileRuntimeOwner(file) === target.runtimeEnvironmentId &&
-      file.lastKnownDiskSignature &&
-      file.externalMutation !== 'changed' &&
-      canAutoSaveOpenFile(file)
-    ) {
-      state.setPendingDiskBaselineVerification(file.id, true)
-    }
-  }
-}
 
 function warnExternalWatchFailure(target: EditorExternalWatchTarget, err: unknown): void {
   console.warn('[filesystem-watch] failed to watch worktree', {
@@ -62,6 +42,7 @@ export function useEditorExternalWatch(): void {
   const unwatchedTargetKeysRef = useRef<ReadonlySet<string>>(new Set())
   const remoteWatchUnsubsRef = useRef(new Map<string, () => void>())
   const heldWatchRootsRef = useRef<HeldWatchRoots>(new Map())
+  const heldTabTargetKeysRef = useRef(new Set<string>())
   const fsChangedHandlerRef = useRef<FsChangedHandler | null>(null)
 
   // Why: diff targets so unchanged worktrees keep their subscription; full teardown on every store change drops events in the gap.
@@ -83,10 +64,23 @@ export function useEditorExternalWatch(): void {
     targetsRef.current = nextTargets
     // Why: acquire before release so a root shared by an added and a removed target is never dropped in between.
     for (const target of added) {
-      // Why: writes made while it was unwatched (background trim) were never reported. Resync like a
-      // reconnect does — one overflow through the normal pipeline — once the watch is in place.
-      const resync = previousUnwatchedKeys.has(getEditorExternalWatchTargetKey(target))
-        ? () =>
+      const key = getEditorExternalWatchTargetKey(target)
+      // Why: writes made while it was unwatched (background trim) were never reported. Hold its tabs,
+      // then once the watch is live resync like a reconnect does — one overflow through the normal pipeline.
+      const resync = previousUnwatchedKeys.has(key)
+        ? () => {
+            // Why: a live signal can outlive its target (released, or re-added on a newer watch).
+            const current = targetsRef.current.some(
+              (candidate) => getEditorExternalWatchTargetKey(candidate) === key
+            )
+            if (
+              !current ||
+              (!target.runtimeEnvironmentId && !isWatchRootLive(heldWatchRootsRef.current, target))
+            ) {
+              return
+            }
+            heldTabTargetKeysRef.current.delete(key)
+            releaseRewatchedTabs(target, true)
             fsChangedHandlerRef.current?.(
               {
                 worktreePath: target.worktreePath,
@@ -96,25 +90,30 @@ export function useEditorExternalWatch(): void {
               target.runtimeEnvironmentId,
               target
             )
+          }
         : undefined
       if (resync) {
-        armRewatchedTabDiskChecks(target)
+        heldTabTargetKeysRef.current.add(key)
+        holdRewatchedTabs(target)
       }
       if (target.runtimeEnvironmentId) {
         // Why: the host's ready event means its watcher is installed, so nothing after the resync is lost.
         subscribeRuntimeTarget(target, remoteWatchUnsubsRef.current, fsChangedHandlerRef, resync)
         continue
       }
-      const installed = acquireWatchRoot(heldWatchRootsRef.current, target, (err) => {
+      const live = acquireWatchRoot(heldWatchRootsRef.current, target, (err) => {
         // Why: SSH providers can disappear while tabs still reference the worktree; report the failure without an uncaught renderer promise.
         warnExternalWatchFailure(target, err)
       })
       if (resync) {
-        void installed.then(resync)
+        void live.then(resync)
       }
     }
     for (const target of removed) {
       const key = getEditorExternalWatchTargetKey(target)
+      if (heldTabTargetKeysRef.current.delete(key)) {
+        releaseRewatchedTabs(target, false)
+      }
       const remoteUnsubscribe = remoteWatchUnsubsRef.current.get(key)
       if (remoteUnsubscribe) {
         remoteUnsubscribe()
@@ -131,6 +130,7 @@ export function useEditorExternalWatch(): void {
   useEffect(() => {
     const remoteWatchUnsubs = remoteWatchUnsubsRef.current
     const heldWatchRoots = heldWatchRootsRef.current
+    const heldTabTargetKeys = heldTabTargetKeysRef.current
     const { handleFsChanged, dispose } = buildEditorExternalWatchEventHandler(
       (worktreePath, runtimeEnvironmentId, connectionId) =>
         targetsRef.current.filter(
@@ -143,10 +143,14 @@ export function useEditorExternalWatch(): void {
         )
     )
     const unsubscribe = window.api.fs.onFsChanged((payload) => handleFsChanged(payload, null))
+    const stopWatchLive = window.api.fs.onWatchLive((payload) =>
+      markWatchRootLive(heldWatchRoots, payload)
+    )
     fsChangedHandlerRef.current = handleFsChanged
 
     return () => {
       unsubscribe()
+      stopWatchLive()
       dispose()
       fsChangedHandlerRef.current = null
       for (const remoteUnsubscribe of remoteWatchUnsubs.values()) {
@@ -156,6 +160,7 @@ export function useEditorExternalWatch(): void {
       releaseAllWatchRoots(heldWatchRoots)
       targetsRef.current = []
       unwatchedTargetKeysRef.current = new Set()
+      heldTabTargetKeys.clear()
       // Why: module-scoped reload timers survive StrictMode's synthetic cleanup; a late reload dispatch is harmless.
     }
   }, [])

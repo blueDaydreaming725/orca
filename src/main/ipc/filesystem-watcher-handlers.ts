@@ -1,4 +1,10 @@
 import { ipcMain } from 'electron'
+import type { WatchWorktreeStatus } from '../../shared/filesystem-entry-types'
+import {
+  forgetWatchAwaitingLive,
+  isLocalWatchLiveFor,
+  noteWatchAwaitingLive
+} from './filesystem-watcher-live-announce'
 import { isCurrentWatcherSender } from './filesystem-watcher-sender-lifetime'
 import { onSshFilesystemProviderRegistered } from '../providers/ssh-filesystem-dispatch'
 import { watcherLifecycleState } from './filesystem-watcher-lifecycle-state'
@@ -32,8 +38,15 @@ export function registerFilesystemWatcherHandlers(): void {
 
   ipcMain.handle(
     'fs:watchWorktree',
-    async (event, args: { worktreePath: string; connectionId?: string }): Promise<void> => {
+    async (
+      event,
+      args: { worktreePath: string; connectionId?: string }
+    ): Promise<WatchWorktreeStatus> => {
       const senderSignal = registerWatcherSenderCleanup(event.sender)
+      const pending = (): 'pending' => {
+        noteWatchAwaitingLive(event.sender, senderSignal, args)
+        return 'pending'
+      }
       if (args.connectionId) {
         // Why: a real new watch reopens the subsystem after closeAllWatchers latched it shut (also resets tests between cases).
         watcherLifecycleState.remoteWatchersClosed = false
@@ -47,13 +60,15 @@ export function registerFilesystemWatcherHandlers(): void {
           args.worktreePath
         )
         if (!isCurrentWatcherSender(event.sender, senderSignal)) {
-          return
+          return pending()
         }
         if (result === 'capacity') {
           // Why straight to the dormant backoff: the cap is full until some other root is released,
           // which a 1 Hz reinstall cannot bring about — it only adds relay load per refused root.
+          // Why: note before scheduling so a fast re-arm still finds this renderer waiting.
+          const status = pending()
           scheduleDormantRemoteWatcherRearm(args.connectionId, args.worktreePath)
-          return
+          return status
         }
         if (result === 'unavailable') {
           if (!watcherLifecycleState.loggedUnavailableRemoteWatchers.has(key)) {
@@ -62,6 +77,7 @@ export function registerFilesystemWatcherHandlers(): void {
               `[filesystem-watcher] SSH filesystem provider unavailable; retrying watch for ${args.worktreePath} on connection ${args.connectionId}`
             )
           }
+          const status = pending()
           // Why: writes before the retry lands were never reported, and editor tabs may be stale from an earlier unwatched spell.
           scheduleRemoteWatcherRetry(
             event.sender,
@@ -70,13 +86,14 @@ export function registerFilesystemWatcherHandlers(): void {
             undefined,
             true
           )
-          return
+          return status
         }
-        return
+        return result === 'installed' ? 'installed' : pending()
       }
       // Why: reopen the local subsystem for tests and post-shutdown reattachment; stale callers keep the prior generation.
       watcherLifecycleState.localWatchersClosed = false
       await subscribeLocalWatcher(args.worktreePath, event.sender)
+      return isLocalWatchLiveFor(args.worktreePath, event.sender.id) ? 'installed' : pending()
     }
   )
 
@@ -114,10 +131,12 @@ export function registerFilesystemWatcherHandlers(): void {
         }
         watcherLifecycleState.loggedUnavailableRemoteWatchers.delete(key)
         releaseRemoteWatchListener(key, _event?.sender?.id ?? 0)
+        forgetWatchAwaitingLive(_event?.sender?.id ?? 0, args)
         return
       }
       const senderId = _event.sender.id
       unsubscribeLocalWatcher(args.worktreePath, senderId)
+      forgetWatchAwaitingLive(senderId, args)
     }
   )
 }

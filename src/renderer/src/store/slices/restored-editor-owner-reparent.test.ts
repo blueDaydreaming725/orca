@@ -542,7 +542,8 @@ describe('restored editor owner reparent', () => {
       fs: {
         watchWorktree,
         unwatchWorktree,
-        onFsChanged: vi.fn(() => vi.fn())
+        onFsChanged: vi.fn(() => vi.fn()),
+        onWatchLive: vi.fn(() => vi.fn())
       }
     }
     const oldId = openRestoredSource()

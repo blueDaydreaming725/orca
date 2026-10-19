@@ -172,7 +172,8 @@ export function createFileApi(): NonNullable<Partial<PreloadApi>['fs']> {
     uploadPathsToAgentSessionAttachments: async () => ({ uploaded: [], skipped: [], failed: [] }),
     watchWorktree: () => Promise.resolve(),
     unwatchWorktree: () => Promise.resolve(),
-    onFsChanged: () => noopUnsubscribe
+    onFsChanged: () => noopUnsubscribe,
+    onWatchLive: () => noopUnsubscribe
   }
 }
 

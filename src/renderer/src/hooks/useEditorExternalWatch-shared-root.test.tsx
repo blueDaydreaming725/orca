@@ -31,7 +31,8 @@ vi.mock('@/store', () => ({
     getState: () => ({
       openFiles: harness.openFiles,
       setExternalMutation: harness.setExternalMutation,
-      setPendingDiskBaselineVerification: vi.fn()
+      setPendingDiskBaselineVerification: vi.fn(),
+      setPendingWatchReady: vi.fn()
     })
   })
 }))
@@ -111,7 +112,8 @@ describe('useEditorExternalWatch resync through the real reconciliation path', (
         onFsChanged: vi.fn((listener: (payload: unknown) => void) => {
           emitFsChanged = listener
           return vi.fn()
-        })
+        }),
+        onWatchLive: vi.fn(() => vi.fn())
       }
     }
     window.addEventListener(ORCA_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, onReload)

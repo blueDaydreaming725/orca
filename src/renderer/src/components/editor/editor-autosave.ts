@@ -92,6 +92,7 @@ export function isAutosaveSuspendedForFile(
     | 'externalMutation'
     | 'pendingDiskBaselineVerification'
     | 'pendingLiveDiskVerification'
+    | 'pendingWatchReady'
     | 'pendingOwnerMigration'
   >
 ): boolean {
@@ -99,6 +100,7 @@ export function isAutosaveSuspendedForFile(
     file.externalMutation === 'changed' ||
     file.pendingDiskBaselineVerification === true ||
     file.pendingLiveDiskVerification === true ||
+    file.pendingWatchReady === true ||
     file.pendingOwnerMigration === true
   )
 }

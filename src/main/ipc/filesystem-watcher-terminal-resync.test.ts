@@ -146,6 +146,8 @@ describe('remote filesystem watcher terminal retry resync', () => {
     await vi.advanceTimersByTimeAsync(1_000)
 
     expect(watchMock).toHaveBeenCalledTimes(2)
+    // Why: the IPC call returned 'pending'; the late install is the renderer's live signal.
+    expect(sender.send).toHaveBeenCalledWith('fs:watchLive', ARGS)
     // Why: writes before the retry landed were never reported, so the renderer must re-read.
     await vi.advanceTimersByTimeAsync(5_000)
     expect(sender.send).toHaveBeenCalledWith('fs:changed', OVERFLOW_PAYLOAD)

@@ -77,6 +77,8 @@ export type OpenFile = {
   pendingDiskBaselineVerification?: boolean
   /** Why: gates autosave during a live self-move echo's disk verification; separate flag from the restored scan's so the two can't clear each other's gate. Not persisted. */
   pendingLiveDiskVerification?: boolean
+  /** Why: holds autosave while a re-watched workspace's watch is not live yet; a disk check alone can't cover writes landing before it is. Not persisted. */
+  pendingWatchReady?: boolean
   /** Blocks saves while a restored tab's filesystem authority is being replaced. */
   pendingOwnerMigration?: boolean
   /** Why: routes an Orca-owned move's destination-watcher echo into content verification. On the tab so it survives the atomic rekey; operationId supersedes a stale verification on re-move. Not persisted. */

@@ -15,8 +15,8 @@ export function isBackgroundWatchTrimEnabled(settings: AppState['settings']): bo
   return settings?.trimBackgroundWorkspaceWatches === true
 }
 
-// Why: saves are disk-checked only through the shared Monaco text model; rich markdown, CSV and
-// notebook editors and editable diffs write without that check, so their content must stay live.
+// Why: the re-watch conflict check only covers plain text editor tabs; rich markdown, CSV and
+// notebook editors and editable diffs write outside it, so their content must stay live.
 function hasUncheckedEditSurface(
   file: OpenFile,
   markdownViewMode: Readonly<Record<string, MarkdownViewMode>> | undefined
@@ -36,7 +36,7 @@ function hasUncheckedEditSurface(
   return viewMode === 'rich'
 }
 
-/** Workspaces whose open tabs keep a watch: active, the warm LRU, unsaved edits, and edit surfaces saved without a disk check. */
+/** Workspaces whose open tabs keep a watch: active, the warm LRU, unsaved edits, and edit surfaces the re-watch check can't cover. */
 export function selectWatchEligibleWorkspaceIds(args: {
   activeWorktreeId: string | null
   lastVisitedAtByWorktreeId: Readonly<Record<string, number>> | undefined

@@ -84,6 +84,8 @@ describe('editing a stale tab right after its workspace is watched again', () =>
   let root: Root
   let previousApi: unknown
   let detachScan: () => void
+  let settleWatch: (status: 'installed' | 'pending') => void
+  let emitWatchLive: (payload: { worktreePath: string; connectionId?: string }) => void
 
   const file = () => store.getState().openFiles.find((f) => f.id === FILE)!
 
@@ -109,9 +111,20 @@ describe('editing a stale tab right after its workspace is watched again', () =>
     ;(window as unknown as { api: unknown }).api = {
       fs: {
         // Why: the watch is still installing, so the resync has not landed when the user types.
-        watchWorktree: vi.fn(() => new Promise<void>(() => {})),
+        watchWorktree: vi.fn(
+          () =>
+            new Promise<'installed' | 'pending'>((resolve) => {
+              settleWatch = resolve
+            })
+        ),
         unwatchWorktree: vi.fn().mockResolvedValue(undefined),
         onFsChanged: vi.fn(() => vi.fn()),
+        onWatchLive: vi.fn(
+          (listener: (payload: { worktreePath: string; connectionId?: string }) => void) => {
+            emitWatchLive = listener
+            return vi.fn()
+          }
+        ),
         pathExists: vi.fn().mockResolvedValue(true)
       }
     }
@@ -143,12 +156,37 @@ describe('editing a stale tab right after its workspace is watched again', () =>
     expect(isAutosaveSuspendedForFile(file())).toBe(true)
   })
 
-  it('lets autosave run when disk still matches the tab', async () => {
+  it('keeps autosave held until the watch is live, then re-checks disk', async () => {
     harness.readRuntimeFileContent.mockResolvedValue({ content: 'v1', isBinary: false })
     await switchBackAndType()
+    // Why: disk still matched, but a write can land before the watch is live, so the hold stays.
+    expect(file().pendingDiskBaselineVerification).toBeFalsy()
+    expect(isAutosaveSuspendedForFile(file())).toBe(true)
 
+    harness.readRuntimeFileContent.mockResolvedValue({ content: 'v2 agent write', isBinary: false })
+    await act(async () => settleWatch('installed'))
+    expect(file().pendingWatchReady).toBeFalsy()
+    expect(file().externalMutation).toBe('changed')
+  })
+
+  it('stays held while install is pending and recovers on a later live signal', async () => {
+    harness.readRuntimeFileContent.mockResolvedValue({ content: 'v1', isBinary: false })
+    await switchBackAndType()
+    await act(async () => settleWatch('pending'))
+    expect(isAutosaveSuspendedForFile(file())).toBe(true)
+
+    await act(async () => emitWatchLive({ worktreePath: '/background' }))
     expect(file().externalMutation).toBeUndefined()
     expect(isAutosaveSuspendedForFile(file())).toBe(false)
+  })
+
+  it('releases the hold when the workspace is dropped again before going live', async () => {
+    await render([active], [background])
+    await render([active, background], [])
+    expect(file().pendingWatchReady).toBe(true)
+
+    await render([active], [background])
+    expect(file().pendingWatchReady).toBeFalsy()
   })
 
   it('leaves tabs of a freshly opened workspace alone', async () => {
@@ -156,5 +194,6 @@ describe('editing a stale tab right after its workspace is watched again', () =>
     await render([active, background], [])
 
     expect(file().pendingDiskBaselineVerification).toBeFalsy()
+    expect(file().pendingWatchReady).toBeFalsy()
   })
 })

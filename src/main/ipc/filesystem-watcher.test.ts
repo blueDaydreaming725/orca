@@ -127,9 +127,9 @@ describe('registerFilesystemWatcherHandlers', () => {
     expect(subscribeParcelWatcher).not.toHaveBeenCalled()
 
     removal.release()
-    await expect(
-      handlers['fs:watchWorktree']({ sender }, { worktreePath: '/repo' })
-    ).resolves.toBeUndefined()
+    await expect(handlers['fs:watchWorktree']({ sender }, { worktreePath: '/repo' })).resolves.toBe(
+      'installed'
+    )
     expect(subscribeParcelWatcher).toHaveBeenCalledTimes(1)
   })
 
@@ -143,7 +143,7 @@ describe('registerFilesystemWatcherHandlers', () => {
         { sender: createWatcherSender(1) },
         { worktreePath: '/home/me/repo', connectionId: 'conn-1' }
       )
-    ).resolves.toBeUndefined()
+    ).resolves.toBe('pending')
     await handlers['fs:watchWorktree'](
       { sender: createWatcherSender(1) },
       { worktreePath: '/home/me/repo', connectionId: 'conn-1' }
@@ -215,7 +215,7 @@ describe('registerFilesystemWatcherHandlers', () => {
         { sender },
         { worktreePath: '/home/me/repo', connectionId: 'conn-1' }
       )
-    ).resolves.toBeUndefined()
+    ).resolves.toBe('pending')
 
     await vi.advanceTimersByTimeAsync(1_000)
 

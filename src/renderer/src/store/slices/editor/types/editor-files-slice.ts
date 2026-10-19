@@ -95,6 +95,7 @@ export type EditorFilesSlice = {
   clearPendingDiskBaselineVerification: (fileId: string) => void
   setPendingDiskBaselineVerification: (fileId: string, value: boolean) => void
   setPendingLiveDiskVerification: (fileId: string, value: boolean) => void
+  setPendingWatchReady: (fileIds: readonly string[], value: boolean) => void
   clearSelfMoveEcho: (fileId: string) => void
   /** Atomically retargets open editor sessions across an Orca-owned move — one commit-only update migrating every path-derived id + all id-keyed state, no close/reopen. Returns collision/stale without mutating. */
   rekeyOpenFilesForPathChange: (args: {

@@ -30,3 +30,8 @@ export type FsChangedPayload = {
   /** SSH connection the root was watched on; absent for local roots. Lets the renderer tell a local and an SSH root at the same path apart. */
   connectionId?: string
 }
+
+/** 'pending': the watch is not live yet (retry/backoff); a later `fs:watchLive` announces it. */
+export type WatchWorktreeStatus = 'installed' | 'pending'
+
+export type WatchLivePayload = { worktreePath: string; connectionId?: string }
