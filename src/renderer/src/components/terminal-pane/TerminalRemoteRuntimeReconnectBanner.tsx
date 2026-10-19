@@ -5,6 +5,8 @@ import { translate } from '@/i18n/i18n'
 import type { PtyTransportRecoveryState } from './pty-transport-types'
 import type { WslHostUnavailableReason } from './use-wsl-host-unavailable-reason'
 import { WslHostUnavailableBanner } from './WslHostUnavailableBanner'
+import { StoppedMachineBanner } from '@/components/machines/StoppedMachineBanner'
+import type { MachineMatch } from '@/lib/machines/machine-host-match'
 
 type VisibleRecoveryPhase = Extract<
   PtyTransportRecoveryState['phase'],
@@ -39,7 +41,8 @@ export function TerminalRemoteRuntimeReconnectBanner({
   onReconnect,
   wslHostUnavailable = null,
   wakingMachineName = null,
-  wakeFailure = null
+  wakeFailure = null,
+  stoppedMachine = null
 }: {
   phase: VisibleRecoveryPhase
   onReconnect: () => void
@@ -49,9 +52,14 @@ export function TerminalRemoteRuntimeReconnectBanner({
   wakingMachineName?: string | null
   /** Why waking `wakingMachineName` failed; the button then retries the wake. */
   wakeFailure?: string | null
+  /** The pane's machine sleeps or is archived, so nothing reconnects until it wakes. */
+  stoppedMachine?: MachineMatch | null
 }): React.JSX.Element {
   if (wslHostUnavailable) {
     return <WslHostUnavailableBanner reason={wslHostUnavailable} />
+  }
+  if (stoppedMachine && wakingMachineName === null) {
+    return <StoppedMachineBanner match={stoppedMachine} />
   }
   const retrying = phase !== 'disconnected'
   const waking = retrying && wakingMachineName !== null
@@ -145,7 +153,9 @@ export function DelayedRemoteRuntimeReconnectBanner({
   epoch: number
 }): React.JSX.Element | null {
   const revealed = useRemoteRuntimeRecoveryBannerRevealed(
-    props.phase === 'disconnected' || Boolean(props.wslHostUnavailable)
+    props.phase === 'disconnected' ||
+      Boolean(props.wslHostUnavailable) ||
+      Boolean(props.stoppedMachine && !props.wakingMachineName)
   )
   return revealed ? <TerminalRemoteRuntimeReconnectBanner key={epoch} {...props} /> : null
 }
