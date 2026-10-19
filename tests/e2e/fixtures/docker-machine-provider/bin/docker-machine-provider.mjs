@@ -11,6 +11,16 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 const PROJECT_ROOT = '/root/work'
+const ORIGIN_REPO = '/srv/orca-e2e-origin.git'
+const ORIGIN_URL = 'https://github.e2e.invalid/orca-e2e/orca-e2e.git'
+const SEED_ORIGIN = [
+  `git init -q --bare -b main ${ORIGIN_REPO}`,
+  `git clone -q ${ORIGIN_REPO} /tmp/origin-seed`,
+  'printf "e2e\\n" > /tmp/origin-seed/README.md',
+  'git -C /tmp/origin-seed add README.md',
+  'git -C /tmp/origin-seed commit -qm initial',
+  'git -C /tmp/origin-seed push -q origin HEAD:main'
+].join(' && ')
 const [verb, , , machineId] = process.argv.slice(2)
 const runId = process.env.ORCA_E2E_MACHINE_RUN_ID ?? 'default'
 const host = process.env.ORCA_E2E_SSH_TARGET_HOST?.trim() || '127.0.0.1'
@@ -150,6 +160,10 @@ function create() {
       `mkdir -p ${PROJECT_ROOT}`,
       'git config --global user.email e2e@test.local',
       'git config --global user.name "Orca Machine E2E"',
+      // The UI journey's project clones from this origin; insteadOf keeps the remote a real URL.
+      // Seeded once: a wake reruns this command in the same container.
+      `[ -d ${ORIGIN_REPO} ] || { ${SEED_ORIGIN}; }`,
+      `git config --global url.${ORIGIN_REPO}.insteadOf ${ORIGIN_URL}`,
       `exec /usr/sbin/sshd -D -e -p ${publish.sshdPort}`
     ].join(' && ')
   )
