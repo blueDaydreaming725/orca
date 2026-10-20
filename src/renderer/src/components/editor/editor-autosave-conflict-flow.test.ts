@@ -127,12 +127,14 @@ describe('editor autosave changed-on-disk conflict flow', () => {
       // Keep My Edits clears the mark — autosave resumes and overwrites.
       store.getState().setExternalMutation('/repo/file.ts', null)
       await vi.advanceTimersByTimeAsync(1500)
-      expect(writeFile).toHaveBeenCalledWith({
-        filePath: '/repo/file.ts',
-        content: 'user edit',
-        connectionId: undefined,
-        expectedExecutionHostId: 'local'
-      })
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filePath: '/repo/file.ts',
+          content: 'user edit',
+          connectionId: undefined,
+          expectedExecutionHostId: 'local'
+        })
+      )
     } finally {
       cleanup()
     }
@@ -160,12 +162,14 @@ describe('editor autosave changed-on-disk conflict flow', () => {
 
       store.getState().clearPendingDiskBaselineVerification('/repo/file.ts')
       await vi.advanceTimersByTimeAsync(1500)
-      expect(writeFile).toHaveBeenCalledWith({
-        filePath: '/repo/file.ts',
-        content: 'restored draft',
-        connectionId: undefined,
-        expectedExecutionHostId: 'local'
-      })
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filePath: '/repo/file.ts',
+          content: 'restored draft',
+          connectionId: undefined,
+          expectedExecutionHostId: 'local'
+        })
+      )
     } finally {
       cleanup()
     }

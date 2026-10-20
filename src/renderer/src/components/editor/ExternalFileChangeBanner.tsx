@@ -12,6 +12,7 @@ import type { OpenFile } from '@/store/slices/editor'
 import { ExternalFileChangeCompareDialog } from './ExternalFileChangeCompareDialog'
 import { getDiskBaselineSignature } from './diff-content-signature'
 import { trackExternalChangeConflictAction } from './editor-external-change-telemetry'
+import { trackEditorBaselineRestamp } from './editor-save-disk-precondition'
 
 // Why: when an external process (usually an agent) rewrites a file while the
 // tab holds unsaved edits, the reload pipeline preserves the buffer and marks
@@ -91,7 +92,8 @@ export function keepTabEditsOverExternalChange(file: OpenFile): void {
   if (!target) {
     return
   }
-  void readRuntimeFileContent({
+  // Why tracked: a save right after Keep must compare against the disk the user chose to overwrite.
+  const restamp = readRuntimeFileContent({
     target,
     filePath: file.filePath,
     relativePath: file.relativePath,
@@ -99,21 +101,20 @@ export function keepTabEditsOverExternalChange(file: OpenFile): void {
     connectionId: getConnectionIdForFile(file.worktreeId, file.filePath) ?? undefined,
     expectedExternalSshTargetId: file.externalSshTargetId,
     access: editorTabFileAccess(state, file)
+  }).then((result) => {
+    if (result.isBinary) {
+      return
+    }
+    const current = useAppStore.getState()
+    const liveFile = current.openFiles.find((openFile) => openFile.id === file.id)
+    // Why: only stamp while the dismissal still stands — a save or a newer
+    // conflict marked in the interim owns the baseline.
+    if (!liveFile || liveFile.externalMutation === 'changed') {
+      return
+    }
+    current.setLastKnownDiskSignature(file.id, getDiskBaselineSignature(result.content))
   })
-    .then((result) => {
-      if (result.isBinary) {
-        return
-      }
-      const current = useAppStore.getState()
-      const liveFile = current.openFiles.find((openFile) => openFile.id === file.id)
-      // Why: only stamp while the dismissal still stands — a save or a newer
-      // conflict marked in the interim owns the baseline.
-      if (!liveFile || liveFile.externalMutation === 'changed') {
-        return
-      }
-      current.setLastKnownDiskSignature(file.id, getDiskBaselineSignature(result.content))
-    })
-    .catch(() => undefined)
+  trackEditorBaselineRestamp(file.id, restamp)
 }
 
 export function ExternalFileChangeBanner({

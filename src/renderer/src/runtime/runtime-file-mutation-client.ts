@@ -18,7 +18,8 @@ import {
   FILE_WRITE_OK,
   parseFileWriteResult,
   type FileWriteDiskPrecondition,
-  type FileWriteResult
+  type FileWriteResult,
+  type OlderHostDiskPreconditionFallback
 } from '../../../shared/file-write-disk-precondition'
 import { writeRemoteFileIfUnchanged } from './runtime-file-write-disk-precondition'
 
@@ -60,7 +61,8 @@ export async function writeRuntimeFile(
   filePath: string,
   content: string,
   access?: LocalFileAccess,
-  diskPrecondition?: FileWriteDiskPrecondition
+  diskPrecondition?: FileWriteDiskPrecondition,
+  olderHostFallback?: OlderHostDiskPreconditionFallback
 ): Promise<FileWriteResult> {
   const remoteArgs = getRemoteFileArgs(context, filePath)
   if (!remoteArgs) {
@@ -72,7 +74,8 @@ export async function writeRuntimeFile(
           content,
           connectionId: context.connectionId,
           ...localAccess(context.connectionId, access),
-          ...(diskPrecondition ? { diskPrecondition } : {})
+          ...(diskPrecondition ? { diskPrecondition } : {}),
+          ...(diskPrecondition && olderHostFallback ? { olderHostFallback } : {})
         })
       )
     )
@@ -92,7 +95,8 @@ export async function writeRuntimeFile(
     filePath,
     content,
     params,
-    diskPrecondition
+    diskPrecondition,
+    olderHostFallback
   )
 }
 

@@ -182,12 +182,14 @@ describe('attachEditorAutosaveController', () => {
     try {
       await requestDirtyFileSave()
 
-      expect(writeFile).toHaveBeenCalledWith({
-        filePath: '/repo/file.ts',
-        content: 'edited',
-        connectionId: undefined,
-        expectedExecutionHostId: 'local'
-      })
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filePath: '/repo/file.ts',
+          content: 'edited',
+          connectionId: undefined,
+          expectedExecutionHostId: 'local'
+        })
+      )
       expect(store.getState().openFiles[0]?.isDirty).toBe(false)
       expect(store.getState().editorDrafts).toEqual({})
     } finally {
@@ -251,14 +253,16 @@ describe('attachEditorAutosaveController', () => {
     try {
       await requestDirtyFileSave()
 
-      expect(writeFile).toHaveBeenCalledWith({
-        filePath: '/home/neil/platform/api/src/file.ts',
-        content: 'edited',
-        connectionId: 'ssh-1',
-        expectedExecutionHostId: 'ssh:ssh-1',
-        expectedSshTargetId: 'ssh-1',
-        expectedSshConnectionGeneration: 4
-      })
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filePath: '/home/neil/platform/api/src/file.ts',
+          content: 'edited',
+          connectionId: 'ssh-1',
+          expectedExecutionHostId: 'ssh:ssh-1',
+          expectedSshTargetId: 'ssh-1',
+          expectedSshConnectionGeneration: 4
+        })
+      )
       expect(store.getState().openFiles[0]?.isDirty).toBe(false)
     } finally {
       cleanup()
@@ -331,18 +335,21 @@ describe('attachEditorAutosaveController', () => {
     try {
       await requestDirtyFileSave()
 
-      expect(runtimeCall).toHaveBeenCalledWith({
-        selector: 'env-1',
-        method: 'files.write',
-        expectedEnvironmentPairingRevision: undefined,
-        params: {
-          worktree: `id:${workspaceKey}`,
-          relativePath: 'src/file.ts',
-          content: 'edited',
-          expectedExecutionHostId: 'local'
-        },
-        timeoutMs: 15_000
-      })
+      expect(runtimeCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selector: 'env-1',
+          method: 'files.writeIfUnchanged',
+          expectedEnvironmentPairingRevision: undefined,
+          params: {
+            worktree: `id:${workspaceKey}`,
+            relativePath: 'src/file.ts',
+            content: 'edited',
+            expectedExecutionHostId: 'local',
+            diskPrecondition: expect.objectContaining({ allowMissing: true })
+          },
+          timeoutMs: 15_000
+        })
+      )
       expect(writeFile).not.toHaveBeenCalled()
       expect(store.getState().openFiles[0]?.isDirty).toBe(false)
     } finally {
@@ -402,18 +409,21 @@ describe('attachEditorAutosaveController', () => {
     try {
       await requestDirtyFileSave()
 
-      expect(runtimeCall).toHaveBeenCalledWith({
-        selector: 'env-1',
-        method: 'files.write',
-        expectedEnvironmentPairingRevision: undefined,
-        params: {
-          worktree: 'id:wt-1',
-          relativePath: 'file.ts',
-          content: 'edited',
-          expectedExecutionHostId: 'local'
-        },
-        timeoutMs: 15_000
-      })
+      expect(runtimeCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selector: 'env-1',
+          method: 'files.writeIfUnchanged',
+          expectedEnvironmentPairingRevision: undefined,
+          params: {
+            worktree: 'id:wt-1',
+            relativePath: 'file.ts',
+            content: 'edited',
+            expectedExecutionHostId: 'local',
+            diskPrecondition: expect.objectContaining({ allowMissing: true })
+          },
+          timeoutMs: 15_000
+        })
+      )
       expect(writeFile).not.toHaveBeenCalled()
     } finally {
       cleanup()
@@ -453,12 +463,14 @@ describe('attachEditorAutosaveController', () => {
     try {
       await requestDirtyFileSave()
 
-      expect(writeFile).toHaveBeenCalledWith({
-        filePath: '/repo/file.md',
-        content: 'pending rich edit',
-        connectionId: undefined,
-        expectedExecutionHostId: 'local'
-      })
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filePath: '/repo/file.md',
+          content: 'pending rich edit',
+          connectionId: undefined,
+          expectedExecutionHostId: 'local'
+        })
+      )
       expect(store.getState().openFiles[0]?.isDirty).toBe(false)
       expect(store.getState().editorDrafts).toEqual({})
     } finally {
@@ -727,12 +739,14 @@ describe('attachEditorAutosaveController', () => {
       expect(writeFile).not.toHaveBeenCalled()
 
       await requestEditorFileSave({ fileId: '/repo/file.md' })
-      expect(writeFile).toHaveBeenCalledWith({
-        filePath: '/repo/file.md',
-        content: 'after save',
-        connectionId: undefined,
-        expectedExecutionHostId: 'local'
-      })
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filePath: '/repo/file.md',
+          content: 'after save',
+          connectionId: undefined,
+          expectedExecutionHostId: 'local'
+        })
+      )
       expect(store.getState().openFiles[0]?.isDirty).toBe(false)
     } finally {
       cleanup()

@@ -227,12 +227,15 @@ describe('mobile markdown bridge', () => {
         content: 'mobile edit'
       })
 
-      expect(writeFile).toHaveBeenCalledWith({
-        filePath: '/repo/README.md',
-        content: 'mobile edit',
-        connectionId: undefined,
-        expectedExecutionHostId: 'local'
-      })
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filePath: '/repo/README.md',
+          content: 'mobile edit',
+          connectionId: undefined,
+          expectedExecutionHostId: 'local',
+          diskPrecondition: expect.objectContaining({ allowMissing: true })
+        })
+      )
       expect(response).toMatchObject({
         id: 'save-2',
         ok: true,

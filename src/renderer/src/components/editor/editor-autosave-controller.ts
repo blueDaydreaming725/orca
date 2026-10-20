@@ -20,6 +20,11 @@ import {
   ORCA_EDITOR_SAVE_DIRTY_FILES_EVENT
 } from '../../../../shared/editor-save-events'
 
+const STALE_SAVE_MESSAGE =
+  'This file changed on disk since your edits. Review the banner, then save again to overwrite.'
+
+const NOT_SAVED_MESSAGE = "The file wasn't saved. Try saving again."
+
 export function attachEditorAutosaveController(store: AppStoreApi): () => void {
   const saveQueue = createEditorSaveQueue(store)
   const { queueSave, quiesceFileSave, clearAutoSaveTimer, bumpSaveGeneration, syncAutoSave } =
@@ -48,7 +53,10 @@ export function attachEditorAutosaveController(store: AppStoreApi): () => void {
     const draft = store.getState().editorDrafts[fileId]
     if (draft !== undefined) {
       try {
-        await queueSave(file, draft)
+        // Why: only a written save may close the tab; anything else keeps it and its edits.
+        if ((await queueSave(file, draft)) !== 'written') {
+          return
+        }
       } catch {
         return
       }
@@ -82,7 +90,11 @@ export function attachEditorAutosaveController(store: AppStoreApi): () => void {
         return
       }
 
-      await queueSave(file, content)
+      const result = await queueSave(file, content)
+      if (result !== 'written') {
+        detail.reject(result === 'blocked-stale' ? STALE_SAVE_MESSAGE : NOT_SAVED_MESSAGE)
+        return
+      }
       detail.resolve()
     } catch (error) {
       detail.reject(String((error as Error)?.message ?? error))

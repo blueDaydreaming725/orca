@@ -99,9 +99,14 @@ async function expectUserNamedAt(filePath: string): Promise<void> {
 
   mocks.writeRuntimeFile.mockClear()
   await createEditorSaveQueue(useAppStore).queueSave(tab, 'edited', 'user')
-  expect(mocks.writeRuntimeFile).toHaveBeenCalledWith(expect.anything(), filePath, 'edited', {
-    kind: 'user-file'
-  })
+  expect(mocks.writeRuntimeFile).toHaveBeenCalledWith(
+    expect.anything(),
+    filePath,
+    'edited',
+    { kind: 'user-file' },
+    expect.anything(),
+    'unguarded-write'
+  )
 }
 
 async function renameTab(newName: string, worktreePath: string): Promise<void> {
@@ -125,7 +130,7 @@ beforeEach(() => {
   useAppStore.setState({ repos: [repo], worktreesByRepo: { 'repo-local': [worktree] } })
   clearFileExplorerUndoHistory()
   mocks.renameRuntimePath.mockReset().mockResolvedValue(undefined)
-  mocks.writeRuntimeFile.mockReset().mockResolvedValue(undefined)
+  mocks.writeRuntimeFile.mockReset().mockResolvedValue({ ok: true })
   vi.stubGlobal('window', {
     setTimeout,
     clearTimeout,
