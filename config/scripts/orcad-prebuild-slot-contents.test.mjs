@@ -23,6 +23,7 @@ import {
 } from './orcad-prebuild-slot-contents.mjs'
 import {
   ORCAD_ADDON_NAPI_VERSION,
+  orcadNodePtySlotFiles,
   orcadTemplateTargetFilenames
 } from '../../src/shared/orcad-artifacts.ts'
 
@@ -140,22 +141,34 @@ describe('slotSourceFiles', () => {
     expect(names('darwin')).toEqual(['pty.node', 'spawn-helper'])
   })
 
-  it('ships conpty.node with the vendored ConPTY runtime and console-list module on Windows', () => {
-    const nodePtyDir = temp()
-    mkdirSync(join(nodePtyDir, 'third_party', 'conpty', '1.23.251008001', 'win10-arm64'), {
-      recursive: true
-    })
-    const files = slotSourceFiles({ platform: 'win32', arch: 'arm64', buildDir: '/b', nodePtyDir })
-    expect(files.map(([file]) => file)).toEqual([
-      'conpty.node',
-      'conpty_console_list.node',
-      'conpty/conpty.dll',
-      'conpty/OpenConsole.exe'
-    ])
-    expect(files[2][1]).toBe(
-      join(nodePtyDir, 'third_party', 'conpty', '1.23.251008001', 'win10-arm64', 'conpty.dll')
-    )
-  })
+  it.each(['x64', 'arm64'])(
+    'ships both Windows PTY backends from the correct %s sources',
+    (arch) => {
+      const nodePtyDir = temp()
+      mkdirSync(join(nodePtyDir, 'third_party', 'conpty', '1.23.251008001', `win10-${arch}`), {
+        recursive: true
+      })
+      const buildDir = join(nodePtyDir, 'build', 'Release')
+      const files = slotSourceFiles({ platform: 'win32', arch, buildDir, nodePtyDir })
+      expect(files.map(([file]) => file)).toEqual([
+        'conpty.node',
+        'conpty_console_list.node',
+        'conpty/conpty.dll',
+        'conpty/OpenConsole.exe',
+        'pty.node',
+        'winpty.dll',
+        'winpty-agent.exe'
+      ])
+      expect(files[2][1]).toBe(
+        join(nodePtyDir, 'third_party', 'conpty', '1.23.251008001', `win10-${arch}`, 'conpty.dll')
+      )
+      expect(new Map(files).get('conpty.node')).toBe(join(buildDir, 'conpty.node'))
+      for (const file of ['pty.node', 'winpty.dll', 'winpty-agent.exe']) {
+        expect(new Map(files).get(file)).toBe(join(nodePtyDir, 'prebuilds', `win32-${arch}`, file))
+      }
+      expect(files.map(([file]) => file)).toEqual(orcadNodePtySlotFiles(`win32-${arch}`))
+    }
+  )
 
   it('refuses an ambiguous or absent ConPTY payload rather than picking one', () => {
     const nodePtyDir = temp()

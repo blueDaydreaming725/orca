@@ -127,6 +127,7 @@ export function findPostBaselineNodeApiNames(binary) {
  * lib/conpty_console_list_agent.js loads it, but only on the non-DLL kill path, which Orca
  * never takes (it always passes useConptyDll on win32). Shipped so that path fails soft
  * rather than on a missing module.
+ * The vendored winpty backend is still needed below Windows build 18309.
  */
 export function slotSourceFiles({ platform, arch, buildDir, nodePtyDir }) {
   if (platform === 'win32') {
@@ -138,7 +139,11 @@ export function slotSourceFiles({ platform, arch, buildDir, nodePtyDir }) {
         join(nodePtyDir, 'prebuilds', `win32-${arch}`, 'conpty_console_list.node')
       ],
       ['conpty/conpty.dll', join(conptyRuntime, 'conpty.dll')],
-      ['conpty/OpenConsole.exe', join(conptyRuntime, 'OpenConsole.exe')]
+      ['conpty/OpenConsole.exe', join(conptyRuntime, 'OpenConsole.exe')],
+      ...['pty.node', 'winpty.dll', 'winpty-agent.exe'].map((file) => [
+        file,
+        join(nodePtyDir, 'prebuilds', `win32-${arch}`, file)
+      ])
     ]
   }
   // Why spawn-helper on macOS only: node-pty posix_spawns it there, and binding.gyp builds it

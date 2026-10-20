@@ -49,12 +49,15 @@ function fixture(arch = 'x64') {
   for (const [file, bytes] of [
     ['conpty.node', Buffer.concat([peImage({ arch }), CYGWIN_BREAKAWAY_MARKER])],
     ['conpty_console_list.node', peImage({ arch })],
+    ['pty.node', peImage({ arch })],
+    ['winpty.dll', peImage({ arch })],
+    ['winpty-agent.exe', peImage({ arch })],
     ['conpty/conpty.dll', peImage({ arch })],
     ['conpty/OpenConsole.exe', peImage({ arch })]
   ]) {
     write(join(slotDir, file), bytes)
     files[file] = sha256Of(join(slotDir, file))
-    if (file === 'conpty_console_list.node') {
+    if (file !== 'conpty.node' && !file.startsWith('conpty/')) {
       write(join(sourceDir, 'prebuilds', slot, file), bytes)
     }
     if (file.startsWith('conpty/')) {
@@ -119,7 +122,7 @@ describe('Windows server prebuild cache validation', () => {
     f.save()
     expect(() => validateWindowsPrebuildCache(f)).toThrow(/exactly the current ConPTY payload/)
     const extra = fixture()
-    writeFileSync(join(extra.slotDir, 'pty.node'), 'upstream fallback')
+    writeFileSync(join(extra.slotDir, 'unexpected.node'), 'upstream fallback')
     expect(() => validateWindowsPrebuildCache(extra)).toThrow(/exactly the current ConPTY payload/)
     const missing = fixture()
     rmSync(join(missing.slotDir, 'conpty/OpenConsole.exe'))
@@ -133,6 +136,23 @@ describe('Windows server prebuild cache validation', () => {
     writeFileSync(join(f.slotDir, 'conpty/conpty.dll'), 'tampered')
     expect(() => validateWindowsPrebuildCache(f)).toThrow(/sha256 does not match/)
   })
+
+  it.each(['pty.node', 'winpty.dll', 'winpty-agent.exe'])(
+    'refuses an otherwise valid cache missing %s or carrying different vendored bytes',
+    (file) => {
+      const missing = fixture()
+      delete missing.entry.files[file]
+      rmSync(join(missing.slotDir, file))
+      missing.save()
+      expect(() => validateWindowsPrebuildCache(missing)).toThrow(/exactly the current/)
+
+      const changed = fixture()
+      writeFileSync(join(changed.sourceDir, 'prebuilds', changed.slot, file), 'different vendor')
+      expect(() => validateWindowsPrebuildCache(changed)).toThrow(
+        /differs from the current vendored/
+      )
+    }
+  )
 
   it('refuses unexpected empty directories and payload symlinks', () => {
     const f = fixture()

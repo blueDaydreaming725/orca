@@ -19,6 +19,8 @@ if (process.platform === 'win32') {
   // Loaded only by the non-DLL kill path; prove the shipped module still loads under this Node.
   const { loadNativeModule } = require(join(nodePtyDir, 'lib', 'utils'))
   loadNativeModule('conpty_console_list')
+  // The legacy backend must load even when this runner defaults to ConPTY.
+  loadNativeModule('pty')
 }
 
 const token = 'orca-prebuild-smoke-ok'

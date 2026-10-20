@@ -80,12 +80,23 @@ describe('standalone runtime artifacts', () => {
         .map((file) => file.slice('node_modules/node-pty/build/Release/'.length))
     expect(natives('linux-arm64-musl')).toEqual(['pty.node'])
     expect(natives('darwin-x64')).toEqual(['pty.node', 'spawn-helper'])
-    expect(natives('win32-arm64')).toEqual([
+    const windowsFiles = [
       'conpty.node',
       'conpty_console_list.node',
       'conpty/conpty.dll',
-      'conpty/OpenConsole.exe'
-    ])
+      'conpty/OpenConsole.exe',
+      'pty.node',
+      'winpty.dll',
+      'winpty-agent.exe'
+    ]
+    for (const target of ['win32-x64', 'win32-arm64']) {
+      expect(natives(target)).toEqual(windowsFiles)
+      for (const file of windowsFiles) {
+        expect(orcadTemplateTargetFilenames(target)).toContain(
+          `node_modules/node-pty/build/Release/${file}`
+        )
+      }
+    }
   })
 
   // Without it orcad's data-root privacy check fails closed and a Windows slot never starts.

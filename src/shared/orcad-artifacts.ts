@@ -89,7 +89,10 @@ export function orcadNodePtySlotFiles(target: string): string[] {
       'conpty.node',
       'conpty_console_list.node',
       'conpty/conpty.dll',
-      'conpty/OpenConsole.exe'
+      'conpty/OpenConsole.exe',
+      'pty.node',
+      'winpty.dll',
+      'winpty-agent.exe'
     ]
   }
   return target.startsWith('darwin-') ? ['pty.node', 'spawn-helper'] : ['pty.node']
