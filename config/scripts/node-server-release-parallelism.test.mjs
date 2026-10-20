@@ -65,6 +65,11 @@ it('starts independent Linux qualification without waiting for another platform'
     const ctx = { ...context({ qualification: 'true' }), inputs: { build_template: true } }
     expect(evaluate(ctx).coerceString()).toBe('true')
     expect(evaluate(ctx, true).coerceString()).toBe('false')
+    const draft = {
+      ...context({ qualification: '', draft: true, producer: 'skipped' }),
+      inputs: { build_template: false }
+    }
+    expect(evaluate(draft).coerceString()).toBe('false')
   }
 })
 

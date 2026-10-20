@@ -413,6 +413,7 @@ jobs:
       ${{ !cancelled() &&
       needs.changes.outputs.should_run != 'false' &&
       needs.changes.outputs.qualification != 'false' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft != true) &&
       (github.event_name != 'pull_request' || inputs.build_template || inputs.ref != '' ||
       needs.changes.outputs.native_compatibility != 'false') }}
     runs-on: ubuntu-22.04

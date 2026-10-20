@@ -369,12 +369,16 @@ it.each([
   { expected: true, native: 'true', persistence: 'failure' },
   { expected: true, native: 'true', persistence: 'cancelled' },
   { expected: true, native: 'true', persistence: 'skipped' },
+  { expected: false, native: 'true', draft: true },
   { expected: false, native: 'true', qualification: 'false' },
   { expected: false, native: 'true', shouldRun: 'false' },
   { expected: false, native: 'true', cancelled: true }
 ])('evaluates the hosted native job guard with %j', (scenario) => {
   const context = {
-    github: { event_name: scenario.event ?? 'pull_request' },
+    github: {
+      event_name: scenario.event ?? 'pull_request',
+      event: { pull_request: { draft: scenario.draft ?? false } }
+    },
     inputs: { build_template: scenario.template ?? false, ref: scenario.ref ?? '' },
     needs: {
       persistence: { result: scenario.persistence ?? 'success' },
