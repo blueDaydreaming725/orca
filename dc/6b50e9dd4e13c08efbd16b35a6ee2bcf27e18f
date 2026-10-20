@@ -1,0 +1,44 @@
+src/renderer/src/components/native-chat/use-native-chat-context-menu.tsx
+  s_c709254afcaa64::t_ade4a867a39ee1 189
+  s_c709254afcaa64::t_01a33eded4d241 10,188,190-193,333-335
+src/main/window/main-window-focus-lifecycle.ts
+  s_c709254afcaa64::t_e6b0539a1934cb 2,30-31,109-110
+  s_c709254afcaa64::t_74fbbb0bb333ca 126,128-130
+  s_c709254afcaa64::t_8e71b0cc676f6f 127
+  s_c709254afcaa64::t_01a33eded4d241 103-108,111-112,131,133-134,148,317
+src/renderer/src/web/preload-api/web-ui-api.ts
+  s_c709254afcaa64::t_01a33eded4d241 297
+src/preload/api/ui-window-api.ts
+  s_c709254afcaa64::t_01a33eded4d241 49
+src/preload/api/ui-bridge-clipboard-and-window-controls.ts
+  s_c709254afcaa64::t_01a33eded4d241 155-157
+src/main/window/editable-context-menu.ts
+  s_c709254afcaa64::t_01a33eded4d241 197,204
+src/renderer/src/components/native-chat/use-native-chat-context-menu.test.tsx
+  s_c709254afcaa64::t_ade4a867a39ee1 239,241-245,253
+  s_c709254afcaa64::t_8e71b0cc676f6f 246-249
+  s_c709254afcaa64::t_85b7f0991b18aa 229-237,250
+  s_c709254afcaa64::t_a9a53c1b304a42 140-142,238,240,251-252,254-258,260-261
+src/main/window/createMainWindow-markdown-editor-focus.test.ts
+  s_c709254afcaa64::t_e16bf7d58aa23b 554,558
+  s_c709254afcaa64::t_74fbbb0bb333ca 552-553
+  s_c709254afcaa64::t_85b7f0991b18aa 566-571
+  s_c709254afcaa64::t_a9a53c1b304a42 537-542,549-551,555-557,559-562,572-579
+  s_c709254afcaa64::t_8e71b0cc676f6f 543-548,563-565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.50-trip",
+  "base_commit_sha": "dc6b50e9dd4e13c08efbd16b35a6ee2bcf27e18f",
+  "prompts": {},
+  "sessions": {
+    "s_c709254afcaa64": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15802-bb70-7703-a88a-b3aa21042b50",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Blue Daydreaming <26271654+blueDaydreaming725@users.noreply.github.com>"
+    }
+  }
+}
