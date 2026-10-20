@@ -1,0 +1,29 @@
+src/shared/orcad-artifacts.test.ts
+  s_c709254afcaa64::t_d5e3187df0e4ec 83,87-99
+src/shared/orcad-artifacts.ts
+  s_c709254afcaa64::t_01237b8832503e 92-95
+config/scripts/orcad-prebuild-slot-contents.mjs
+  s_c709254afcaa64::t_01237b8832503e 130,142-146
+config/scripts/orcad-prebuild-smoke-child.cjs
+  s_c709254afcaa64::t_01237b8832503e 22-23
+config/scripts/orcad-prebuild-slot-contents.test.mjs
+  s_c709254afcaa64::t_d5e3187df0e4ec 26,144-170
+config/scripts/orcad-windows-prebuild-cache.test.mjs
+  s_c709254afcaa64::t_d5e3187df0e4ec 52-54,60,125,140-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.50-trip",
+  "base_commit_sha": "e5987d4c19c57df9132d70e6650f604751e60ef4",
+  "prompts": {},
+  "sessions": {
+    "s_c709254afcaa64": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15802-bb70-7703-a88a-b3aa21042b50",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Blue Daydreaming <26271654+blueDaydreaming725@users.noreply.github.com>"
+    }
+  }
+}
