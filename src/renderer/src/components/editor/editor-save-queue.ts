@@ -20,11 +20,15 @@ import {
 import { getDiskBaselineSignature } from './diff-content-signature'
 import { trackExternalChangeConflictAction } from './editor-external-change-telemetry'
 import { editorTabFileAccess } from '@/lib/local-file-access'
+import { isEditorLargePasteInFlight } from './editor-large-paste-in-flight'
 import { getWrittenContentDiskSignature } from '../../../../shared/disk-baseline-signature'
 import type { FileWriteResult } from '../../../../shared/file-write-disk-precondition'
 import {
   EDITOR_SAVE_OLDER_HOST_FALLBACK,
+  editorModelSiblingTabs,
   editorSaveDiskPrecondition,
+  editorTabModelUri,
+  noteEditorBaselineWrite,
   waitForEditorBaselineRestamp,
   type EditorSaveResult,
   type EditorSaveTrigger
@@ -104,7 +108,11 @@ export function createEditorSaveQueue(store: AppStoreApi): EditorSaveQueue {
         }
 
         // Why: only autosave is blocked while suspended; explicit user saves proceed (the banner warned).
-        if (trigger === 'autosave' && isAutosaveSuspendedForFile(liveFile)) {
+        if (
+          trigger === 'autosave' &&
+          (isAutosaveSuspendedForFile(liveFile) ||
+            isEditorLargePasteInFlight(editorTabModelUri(state, liveFile)))
+        ) {
           return 'failed'
         }
 
@@ -131,7 +139,18 @@ export function createEditorSaveQueue(store: AppStoreApi): EditorSaveQueue {
             ? SELF_WRITE_REMOTE_TTL_MS
             : undefined
         )
-        const diskPrecondition = editorSaveDiskPrecondition(liveFile, contentToSave, trigger)
+        const siblings = editorModelSiblingTabs(state, liveFile)
+        const diskPrecondition = editorSaveDiskPrecondition(
+          liveFile,
+          siblings,
+          contentToSave,
+          trigger
+        )
+        if (diskPrecondition === 'unknown-baseline') {
+          clearSelfWrite(liveFile.filePath, liveFile.runtimeEnvironmentId)
+          store.getState().setExternalMutation(file.id, 'changed')
+          return 'blocked-stale'
+        }
         let writeResult: FileWriteResult
         try {
           writeResult = await writeRuntimeFile(
@@ -159,6 +178,22 @@ export function createEditorSaveQueue(store: AppStoreApi): EditorSaveQueue {
           return 'blocked-stale'
         }
 
+        // Why before the superseded check: disk holds this text either way, so the next save compares against it.
+        noteEditorBaselineWrite(file.id)
+        // Why computed: the signature of what a UTF-8 write leaves on disk, with no extra stat.
+        const writtenSignature = getWrittenContentDiskSignature(contentToSave)
+        store.getState().setLastKnownDiskSignature(file.id, writtenSignature)
+        // Why: tabs sharing this model show the written text too; one holding other text keeps its old baseline.
+        for (const sibling of siblings) {
+          const siblingDraft = store.getState().editorDrafts[sibling.id]
+          if (
+            sibling.id !== file.id &&
+            (siblingDraft === undefined || siblingDraft === contentToSave)
+          ) {
+            noteEditorBaselineWrite(sibling.id)
+            store.getState().setLastKnownDiskSignature(sibling.id, writtenSignature)
+          }
+        }
         if ((saveGeneration.get(file.id) ?? 0) !== queuedGeneration) {
           return 'written'
         }
@@ -172,9 +207,7 @@ export function createEditorSaveQueue(store: AppStoreApi): EditorSaveQueue {
         if (!stillDirty) {
           nextState.clearEditorDraft(file.id)
         }
-        // Why: disk now holds contentToSave — rebaseline so our own save isn't flagged external; drop pending verification.
-        // Why computed: the signature of what a UTF-8 write leaves on disk, with no extra stat.
-        nextState.setLastKnownDiskSignature(file.id, getWrittenContentDiskSignature(contentToSave))
+        // Why: disk now holds contentToSave, so a pending restore verification is moot.
         nextState.clearPendingDiskBaselineVerification(file.id)
         // Why: the write made disk match the buffer, so clear any now-stale changed-on-disk conflict.
         const savedFile = nextState.openFiles.find((openFile) => openFile.id === file.id)

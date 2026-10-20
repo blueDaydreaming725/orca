@@ -16090,6 +16090,12 @@
               "notice": {
                 "8c59ce5075": "ファイルの保存に失敗しました。もう一度お試しください。"
               }
+            },
+            "stale": {
+              "notice": "This file changed on disk since your edits. Review the banner, then save again to overwrite."
+            },
+            "sectionStale": {
+              "notice": "This file changed on disk since this section loaded. Save again to overwrite it."
             }
           }
         },

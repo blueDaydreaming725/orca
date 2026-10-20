@@ -8,11 +8,8 @@ import {
   getDiskBaselineSignature,
   getWrittenContentDiskSignature
 } from '../../../../shared/disk-baseline-signature'
-import {
-  compareDiskWritePrecondition,
-  FILE_WRITE_DISK_PRECONDITION_RUNTIME_CAPABILITY,
-  type FileWriteDiskPrecondition
-} from '../../../../shared/file-write-disk-precondition'
+import { FILE_WRITE_DISK_PRECONDITION_RUNTIME_CAPABILITY } from '../../../../shared/file-write-disk-precondition'
+import { GUARDED_PATH, openGuardedFile, stubGuardedDisk } from './editor-save-guarded-disk-fixture'
 import {
   createCompatibleRuntimeStatusResponse,
   type RuntimeEnvironmentCallRequest
@@ -41,62 +38,9 @@ vi.mock('@/runtime/runtime-file-read-client', async (importOriginal) => ({
   readRuntimeFileContent: mocks.readRuntimeFileContent
 }))
 
-const PATH = '/repo/file.ts'
+const PATH = GUARDED_PATH
 
-type WriteArgs = {
-  filePath: string
-  content: string
-  diskPrecondition?: FileWriteDiskPrecondition
-  olderHostFallback?: string
-}
-
-/** A local host that compares the precondition inside the write, like the real writer. */
-function stubGuardedDisk(initial: Record<string, string>) {
-  const files = new Map(Object.entries(initial))
-  const writeFile = vi.fn(async ({ filePath, content, diskPrecondition }: WriteArgs) => {
-    if (diskPrecondition) {
-      const diskConflict = compareDiskWritePrecondition(
-        diskPrecondition,
-        files.get(filePath) ?? null
-      )
-      if (diskConflict) {
-        return { ok: false, diskConflict }
-      }
-    }
-    files.set(filePath, content)
-    return { ok: true }
-  })
-  const eventTarget = new EventTarget()
-  vi.stubGlobal('window', {
-    addEventListener: eventTarget.addEventListener.bind(eventTarget),
-    removeEventListener: eventTarget.removeEventListener.bind(eventTarget),
-    dispatchEvent: eventTarget.dispatchEvent.bind(eventTarget),
-    setTimeout: globalThis.setTimeout.bind(globalThis),
-    clearTimeout: globalThis.clearTimeout.bind(globalThis),
-    api: { fs: { writeFile } }
-  })
-  return { files, writeFile }
-}
-
-function openFile(
-  store: ReturnType<typeof createEditorStore>,
-  options: { baseline?: string; draft: string; filePath?: string; language?: string }
-): string {
-  const filePath = options.filePath ?? PATH
-  store.getState().openFile({
-    filePath,
-    relativePath: filePath.slice('/repo/'.length),
-    worktreeId: 'wt-1',
-    language: options.language ?? 'typescript',
-    mode: 'edit'
-  })
-  if (options.baseline !== undefined) {
-    store.getState().setLastKnownDiskSignature(filePath, getDiskBaselineSignature(options.baseline))
-  }
-  store.getState().setEditorDraft(filePath, options.draft)
-  store.getState().markFileDirty(filePath, true)
-  return filePath
-}
+const openFile = openGuardedFile
 
 async function requestRestartSave(): Promise<void> {
   await new Promise<void>((resolve, reject) => {
@@ -293,6 +237,76 @@ describe('editor saves guarded by the disk precondition', () => {
           store.getState().openFiles.find((f) => f.filePath === filePath)?.externalMutation
         ).toBe('changed')
       }
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('blocks both worktree tabs sharing one model once they disagree on its disk version', async () => {
+    const disk = stubGuardedDisk({ [PATH]: 'B' })
+    const store = createEditorStore()
+    store.setState({
+      worktreesByRepo: {
+        'repo-1': [
+          makeWorktree({ id: 'wt-1', repoId: 'repo-1', path: '/repo', hostId: 'local' }),
+          makeWorktree({ id: 'wt-2', repoId: 'repo-1', path: '/repo', hostId: 'local' })
+        ]
+      }
+    })
+    for (const worktreeId of ['wt-1', 'wt-2']) {
+      store.getState().openFile({
+        filePath: PATH,
+        relativePath: 'file.ts',
+        worktreeId,
+        language: 'typescript',
+        mode: 'edit'
+      })
+    }
+    const [stale, fresh] = store.getState().openFiles
+    expect(stale.id).not.toBe(fresh.id)
+    // A stale remount put A-based text into the shared model; the other tab already saw B.
+    store.getState().setLastKnownDiskSignature(stale.id, getDiskBaselineSignature('A'))
+    store.getState().setLastKnownDiskSignature(fresh.id, getDiskBaselineSignature('B'))
+    store.getState().setEditorDraft(fresh.id, 'A edit')
+    store.getState().markFileDirty(fresh.id, true)
+
+    const cleanup = attachEditorAutosaveController(store)
+    try {
+      await vi.advanceTimersByTimeAsync(1500)
+      await expect(
+        requestEditorFileSave({ fileId: stale.id, fallbackContent: 'A' })
+      ).rejects.toThrow(/changed on disk/)
+
+      expect(disk.writeFile).not.toHaveBeenCalled()
+      expect(disk.files.get(PATH)).toBe('B')
+      expect(store.getState().openFiles.find((f) => f.id === fresh.id)?.externalMutation).toBe(
+        'changed'
+      )
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('guards a restored draft whose editor never mounted, for autosave and explicit save', async () => {
+    const disk = stubGuardedDisk({ [PATH]: 'agent rewrite' })
+    const store = createEditorStore()
+    // Restored from the session: draft and its persisted baseline, no Monaco model.
+    openFile(store, { baseline: 'original', draft: 'restored edit' })
+
+    const cleanup = attachEditorAutosaveController(store)
+    try {
+      await expect(requestEditorFileSave({ fileId: PATH })).rejects.toThrow(/changed on disk/)
+      store.getState().setExternalMutation(PATH, null)
+      await vi.advanceTimersByTimeAsync(1500)
+
+      expect(disk.writeFile).toHaveBeenCalledTimes(2)
+      for (const [args] of disk.writeFile.mock.calls) {
+        expect(args.diskPrecondition).toMatchObject({
+          expectedSignature: getDiskBaselineSignature('original')
+        })
+      }
+      expect(disk.files.get(PATH)).toBe('agent rewrite')
+      expect(store.getState().openFiles[0]?.externalMutation).toBe('changed')
     } finally {
       cleanup()
     }

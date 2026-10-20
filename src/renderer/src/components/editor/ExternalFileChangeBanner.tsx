@@ -12,7 +12,10 @@ import type { OpenFile } from '@/store/slices/editor'
 import { ExternalFileChangeCompareDialog } from './ExternalFileChangeCompareDialog'
 import { getDiskBaselineSignature } from './diff-content-signature'
 import { trackExternalChangeConflictAction } from './editor-external-change-telemetry'
-import { trackEditorBaselineRestamp } from './editor-save-disk-precondition'
+import {
+  editorBaselineWriteEpoch,
+  trackEditorBaselineRestamp
+} from './editor-save-disk-precondition'
 
 // Why: when an external process (usually an agent) rewrites a file while the
 // tab holds unsaved edits, the reload pipeline preserves the buffer and marks
@@ -93,6 +96,7 @@ export function keepTabEditsOverExternalChange(file: OpenFile): void {
     return
   }
   // Why tracked: a save right after Keep must compare against the disk the user chose to overwrite.
+  const writeEpochAtRead = editorBaselineWriteEpoch(file.id)
   const restamp = readRuntimeFileContent({
     target,
     filePath: file.filePath,
@@ -109,7 +113,12 @@ export function keepTabEditsOverExternalChange(file: OpenFile): void {
     const liveFile = current.openFiles.find((openFile) => openFile.id === file.id)
     // Why: only stamp while the dismissal still stands — a save or a newer
     // conflict marked in the interim owns the baseline.
-    if (!liveFile || liveFile.externalMutation === 'changed') {
+    // A save that finished after this read started already set a newer baseline.
+    if (
+      !liveFile ||
+      liveFile.externalMutation === 'changed' ||
+      editorBaselineWriteEpoch(file.id) !== writeEpochAtRead
+    ) {
       return
     }
     current.setLastKnownDiskSignature(file.id, getDiskBaselineSignature(result.content))

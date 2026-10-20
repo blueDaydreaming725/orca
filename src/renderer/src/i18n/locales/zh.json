@@ -16090,6 +16090,12 @@
               "notice": {
                 "8c59ce5075": "保存文件失败。请重试。"
               }
+            },
+            "stale": {
+              "notice": "This file changed on disk since your edits. Review the banner, then save again to overwrite."
+            },
+            "sectionStale": {
+              "notice": "This file changed on disk since this section loaded. Save again to overwrite it."
             }
           }
         },

@@ -51,7 +51,7 @@ type UseEditorPanelFileContentLoaderParams = {
 // dirty tab keeps its baseline (its draft still derives from the older content
 // the signature was taken over). Best-effort metadata — a failure here must
 // not convert an already-delivered load into an error view, hence the guard.
-function stampCleanTabDiskBaseline(id: string, result: FileContent): void {
+export function stampCleanTabDiskBaseline(id: string, result: FileContent): void {
   if (result.isBinary || result.loadError || result.csvPreview) {
     return
   }

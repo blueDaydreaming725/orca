@@ -40,6 +40,12 @@ export type EditorSaveFileTarget = {
   fallbackContent?: string
 }
 
+export type EditorSaveAndCloseDetail = {
+  fileId: string
+  /** Called at once when the tab stays open, so a waiting dialog needn't time out. */
+  onNotClosed?: (reason: 'blocked-stale' | 'not-saved') => void
+}
+
 export type EditorSaveFileDetail = EditorSaveFileTarget & {
   claim: () => void
   resolve: () => void

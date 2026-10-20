@@ -4,6 +4,7 @@ import {
   ORCA_EDITOR_QUIESCE_FILE_SAVES_EVENT,
   ORCA_EDITOR_SAVE_AND_CLOSE_EVENT,
   ORCA_EDITOR_SAVE_FILE_EVENT,
+  type EditorSaveAndCloseDetail,
   type EditorSaveFileDetail,
   type EditorSaveQuiesceDetail
 } from './editor-autosave'
@@ -13,15 +14,13 @@ import {
   getAutosaveSubscriberInputs
 } from './editor-autosave-state-projections'
 import { createEditorSaveQueue, type AppStoreApi } from './editor-save-queue'
+import { EDITOR_STALE_SAVE_MESSAGE } from './editor-save-disk-precondition'
 import { createEditorRestartSaveHandlers } from './editor-restart-save-handlers'
 import { createEditorExternalChangeTabReset } from './editor-external-change-tab-reset'
 import {
   ORCA_EDITOR_PREPARE_HOT_EXIT_EVENT,
   ORCA_EDITOR_SAVE_DIRTY_FILES_EVENT
 } from '../../../../shared/editor-save-events'
-
-const STALE_SAVE_MESSAGE =
-  'This file changed on disk since your edits. Review the banner, then save again to overwrite.'
 
 const NOT_SAVED_MESSAGE = "The file wasn't saved. Try saving again."
 
@@ -43,7 +42,10 @@ export function attachEditorAutosaveController(store: AppStoreApi): () => void {
   })
 
   const handleSaveAndClose = async (event: Event): Promise<void> => {
-    const { fileId } = (event as CustomEvent<{ fileId: string }>).detail
+    if (!(event instanceof CustomEvent)) {
+      return
+    }
+    const { fileId, onNotClosed }: EditorSaveAndCloseDetail = event.detail
     const file = store.getState().openFiles.find((openFile) => openFile.id === fileId)
     if (!file) {
       return
@@ -54,10 +56,13 @@ export function attachEditorAutosaveController(store: AppStoreApi): () => void {
     if (draft !== undefined) {
       try {
         // Why: only a written save may close the tab; anything else keeps it and its edits.
-        if ((await queueSave(file, draft)) !== 'written') {
+        const result = await queueSave(file, draft)
+        if (result !== 'written') {
+          onNotClosed?.(result === 'blocked-stale' ? 'blocked-stale' : 'not-saved')
           return
         }
       } catch {
+        onNotClosed?.('not-saved')
         return
       }
     }
@@ -92,7 +97,7 @@ export function attachEditorAutosaveController(store: AppStoreApi): () => void {
 
       const result = await queueSave(file, content)
       if (result !== 'written') {
-        detail.reject(result === 'blocked-stale' ? STALE_SAVE_MESSAGE : NOT_SAVED_MESSAGE)
+        detail.reject(result === 'blocked-stale' ? EDITOR_STALE_SAVE_MESSAGE : NOT_SAVED_MESSAGE)
         return
       }
       detail.resolve()

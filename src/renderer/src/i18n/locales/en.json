@@ -16379,6 +16379,12 @@
               "notice": {
                 "8c59ce5075": "Failed to save the file. Please try again."
               }
+            },
+            "stale": {
+              "notice": "This file changed on disk since your edits. Review the banner, then save again to overwrite."
+            },
+            "sectionStale": {
+              "notice": "This file changed on disk since this section loaded. Save again to overwrite it."
             }
           }
         },
