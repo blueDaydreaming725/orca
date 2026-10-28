@@ -1,0 +1,22 @@
+config/scripts/check-changed-code-quality.mjs
+  s_e5720201168b5c::t_9708fb9542b8ea 196
+config/scripts/check-changed-code-quality-paths.test.mjs
+  s_e5720201168b5c::t_d09f1e0de7e168 1-10,12-50
+  s_e5720201168b5c::t_9708fb9542b8ea 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "8b04597294fecf473867a652879714f51f2de346",
+  "prompts": {},
+  "sessions": {
+    "s_e5720201168b5c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18091-0c6a-7c10-8b99-04407006f7b3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Blue Daydreaming <26271654+blueDaydreaming725@users.noreply.github.com>"
+    }
+  }
+}
