@@ -1,0 +1,23 @@
+config/scripts/check-flaky-test-pattern-ratchet.test.mjs
+  s_41df8aaa43b3c9::t_277a12b59963f6 2,10-11,49,53-86
+config/scripts/check-flaky-test-pattern-ratchet.mjs
+  s_41df8aaa43b3c9::t_94eec7fa25eac9 70-71
+config/scripts/ratchet-baseline.mjs
+  s_41df8aaa43b3c9::t_94eec7fa25eac9 9,14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "952cca7fe2fb084af2c55fd1a553f5e845e0997d",
+  "prompts": {},
+  "sessions": {
+    "s_41df8aaa43b3c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15d60-5453-7b30-add6-70dd10c696ad",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Blue Daydreaming <26271654+blueDaydreaming725@users.noreply.github.com>"
+    }
+  }
+}

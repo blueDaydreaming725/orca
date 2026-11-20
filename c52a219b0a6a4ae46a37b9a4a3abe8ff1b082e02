@@ -1,0 +1,21 @@
+config/scripts/check-readme-local-links.mjs
+  s_e5720201168b5c::t_fcbe2df592d4cc 10,36-43,45
+config/scripts/check-readme-local-links.test.mjs
+  s_e5720201168b5c::t_133dfb35faea84 80-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "c52a219b0a6a4ae46a37b9a4a3abe8ff1b082e02",
+  "prompts": {},
+  "sessions": {
+    "s_e5720201168b5c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18091-0c6a-7c10-8b99-04407006f7b3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Blue Daydreaming <26271654+blueDaydreaming725@users.noreply.github.com>"
+    }
+  }
+}
