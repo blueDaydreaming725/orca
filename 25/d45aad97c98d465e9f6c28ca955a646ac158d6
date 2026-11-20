@@ -1,0 +1,29 @@
+src/main/external-conversations/external-conversation-provider-turn.test-fixture.ts
+  s_7f6faf6677e484::t_173c8e398ed209 43,89-91,94
+src/renderer/src/components/native-chat/messages/rows/NativeChatConnectorMention.fixture.tsx
+  s_5cfaf19ce83409::t_fcc29eb760b572 1-22,24-35,37-44,46,49,51-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "25d45aad97c98d465e9f6c28ca955a646ac158d6",
+  "prompts": {},
+  "sessions": {
+    "s_5cfaf19ce83409": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f783-3796-7e33-864d-b8a838aa9e27",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Blue Daydreaming <26271654+blueDaydreaming725@users.noreply.github.com>"
+    },
+    "s_7f6faf6677e484": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f769-496c-7be0-8ec4-97d0e6837cf6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Blue Daydreaming <26271654+blueDaydreaming725@users.noreply.github.com>"
+    }
+  }
+}
